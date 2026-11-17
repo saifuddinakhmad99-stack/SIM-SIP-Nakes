@@ -1,0 +1,6 @@
+{
+  "name": "SIM-SIP NAKES RSUD Sidoarjo Barat",
+  "description": "Sistem Informasi Manajemen Surat Izin Praktik Tenaga Kesehatan RSUD Sidoarjo Barat dengan pemantauan masa berlaku dan pengingat WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
