@@ -207,12 +207,27 @@ export interface AppSettings {
   templatePesanWa: string;
 }
 
+export function getWibDateKey(input: Date | string = new Date()): string {
+  const date = typeof input === 'string' ? new Date(input) : input;
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
 export function hitungSisaHari(tanggalBerakhir: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const expiry = new Date(tanggalBerakhir + 'T00:00:00');
-  const diffMs = expiry.getTime() - today.getTime();
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (!tanggalBerakhir) return 0;
+  const todayWib = getWibDateKey(new Date()).split('-').map(Number);
+  const parts = tanggalBerakhir.split('-').map(Number);
+  if (todayWib.length !== 3 || parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+    return 0;
+  }
+  const todayUtc = Date.UTC(todayWib[0], todayWib[1] - 1, todayWib[2]);
+  const expiryUtc = Date.UTC(parts[0], parts[1] - 1, parts[2]);
+  return Math.round((expiryUtc - todayUtc) / (1000 * 60 * 60 * 24));
 }
 
 export function tentukanStatusSip(

@@ -11,6 +11,7 @@ import {
   AppSettings,
   AuditActionType,
   AuditLogEntry,
+  getWibDateKey,
   hitungSisaHari,
   NakesRecord,
   NavSection,
@@ -218,12 +219,12 @@ export default function App() {
   ) => {
     const targetId = existingId || `nks-${Date.now()}`;
     const sisaHari = hitungSisaHari(record.tanggalBerakhir);
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getWibDateKey();
     const alreadyAutoSentToday = waLogs.some(
       (log) =>
         log.nakesId === targetId &&
         log.kategoriPengingat === 'Otomatis <180 Hari' &&
-        log.waktuKirim.slice(0, 10) === todayStr
+        getWibDateKey(log.waktuKirim) === todayStr
     );
     const shouldTriggerAutoWa =
       autoWa180Aktif && sisaHari < 180 && !alreadyAutoSentToday;
@@ -300,12 +301,12 @@ export default function App() {
   };
 
   const handleQuickSendWa = (nakes: NakesRecord, pesan: string) => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getWibDateKey();
     const alreadyManualToday = waLogs.some(
       (log) =>
         log.nakesId === nakes.id &&
         log.kategoriPengingat === 'Click-to-Chat (Manual)' &&
-        log.waktuKirim.slice(0, 10) === todayStr
+        getWibDateKey(log.waktuKirim) === todayStr
     );
 
     if (alreadyManualToday) {
@@ -350,12 +351,12 @@ export default function App() {
     kategori: WaLogEntry['kategoriPengingat'],
     pesan: string
   ) => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getWibDateKey();
     const duplicateSameTriggerToday = waLogs.some(
       (log) =>
         log.nakesId === nakes.id &&
         log.kategoriPengingat === kategori &&
-        log.waktuKirim.slice(0, 10) === todayStr
+        getWibDateKey(log.waktuKirim) === todayStr
     );
 
     if (duplicateSameTriggerToday) {
@@ -395,7 +396,7 @@ export default function App() {
 
   const handleRunCronSimulation = (): CronSimulationReport => {
     const nowIso = new Date().toISOString();
-    const todayStr = nowIso.slice(0, 10);
+    const todayStr = getWibDateKey();
     const items: CronSimulationItem[] = [];
     const newLogs: WaLogEntry[] = [];
     const updatedNakesIds: string[] = [];
@@ -418,7 +419,7 @@ export default function App() {
         (log) =>
           log.nakesId === nakes.id &&
           log.kategoriPengingat === trigger &&
-          log.waktuKirim.slice(0, 10) === todayStr
+          getWibDateKey(log.waktuKirim) === todayStr
       );
 
       if (alreadySentSameDayTrigger) {

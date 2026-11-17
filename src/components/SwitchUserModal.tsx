@@ -1,5 +1,7 @@
-import { CheckCircle2, Shield, X } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, LogOut, Shield, UserCheck, X } from 'lucide-react';
 import { ROLE_PERMISSION_MATRIX, UserAccount } from '../types/sip';
+import { useAuth } from '../lib/authContext';
 
 interface SwitchUserModalProps {
   isOpen: boolean;
@@ -16,9 +18,33 @@ export function SwitchUserModal({
   onClose,
   onSelectUser,
 }: SwitchUserModalProps) {
+  const { firebaseUser, signInWithGoogle, logoutGoogle } = useAuth();
+  const [ssoBusy, setSsoBusy] = useState(false);
+  const [ssoError, setSsoError] = useState('');
+
   if (!isOpen) return null;
 
   const activeUsers = users.filter((u) => u.aktif);
+
+  const handleGoogleLogin = async () => {
+    setSsoBusy(true);
+    setSsoError('');
+    try {
+      const token = await signInWithGoogle();
+      if (token) {
+        const res = await fetch('/api/v1/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          onClose();
+        }
+      }
+    } catch {
+      setSsoError('Login Google dibatalkan atau gagal diproses.');
+    } finally {
+      setSsoBusy(false);
+    }
+  };
 
   return (
     <div
@@ -45,9 +71,48 @@ export function SwitchUserModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-3 max-h-[75vh] overflow-y-auto">
+        <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-900">
+                Autentikasi Akun Resmi (Google SSO)
+              </div>
+              <div className="text-xs text-slate-500 truncate">
+                {firebaseUser
+                  ? `Masuk sebagai ${firebaseUser.email}`
+                  : 'Verifikasi sesi pegawai untuk akses API terproteksi'}
+              </div>
+            </div>
+            {firebaseUser ? (
+              <button
+                type="button"
+                onClick={() => logoutGoogle()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 shrink-0"
+              >
+                <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Keluar SSO</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={ssoBusy}
+                onClick={handleGoogleLogin}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#0F766E] rounded-lg hover:bg-[#0D5E57] disabled:opacity-60 shrink-0"
+              >
+                <UserCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{ssoBusy ? 'Memproses...' : 'Masuk Google'}</span>
+              </button>
+            )}
+          </div>
+
+          {ssoError && (
+            <div className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {ssoError}
+            </div>
+          )}
+
           <p className="text-xs text-slate-600 leading-relaxed">
-            Pilih akun pengguna di bawah ini untuk menguji pembatasan hak akses sesuai peran pada dokumen PRD (Admin IT, Kasi SDM, Operator SDM, dan Viewer / Komite Pimpinan).
+            Pilih akun peran di bawah ini untuk menguji pembatasan hak akses sesuai dokumen PRD (Admin IT, Kasi SDM, Operator SDM, dan Viewer / Komite Pimpinan).
           </p>
 
           <div className="space-y-2.5">

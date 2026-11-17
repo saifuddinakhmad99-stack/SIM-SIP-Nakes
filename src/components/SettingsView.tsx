@@ -73,7 +73,15 @@ export function SettingsView({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveSettings(form);
+    const safeKritis = Math.max(1, form.ambangKritisHari || 30);
+    const safeAman = Math.max(safeKritis + 1, form.ambangAmanHari || 180);
+    const normalized: AppSettings = {
+      ...form,
+      ambangKritisHari: safeKritis,
+      ambangAmanHari: safeAman,
+    };
+    setForm(normalized);
+    onSaveSettings(normalized);
     setSavedNotice(true);
     setTimeout(() => setSavedNotice(false), 3000);
   };

@@ -1,12 +1,11 @@
-import { AppSettings, AuditLogEntry, NakesRecord, UserAccount, WaLogEntry } from '../types/sip';
+import { AppSettings, AuditLogEntry, getWibDateKey, NakesRecord, UserAccount, WaLogEntry } from '../types/sip';
 
 function addDaysToToday(days: number): string {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + days);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const [y, m, d] = getWibDateKey(new Date()).split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d + days));
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
