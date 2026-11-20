@@ -17,6 +17,8 @@ const ACTION_LABELS: Record<AuditActionType, string> = {
   KIRIM_WA: 'Kirim Notifikasi WA',
   KELOLA_USER: 'Kelola Akun & Hak Akses',
   GANTI_AKUN: 'Pergantian Akun / Role',
+  LOGIN: 'Masuk Sistem (Login)',
+  LOGOUT: 'Keluar Sistem (Logout)',
   RESET_DATA: 'Reset Data Awal',
 };
 

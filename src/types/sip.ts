@@ -118,7 +118,31 @@ export type AuditActionType =
   | 'KIRIM_WA'
   | 'KELOLA_USER'
   | 'GANTI_AKUN'
+  | 'LOGIN'
+  | 'LOGOUT'
   | 'RESET_DATA';
+
+export interface BackendSessionUser {
+  id: number;
+  name: string;
+  nip: string;
+  username: string;
+  email: string | null;
+  role: string;
+}
+
+export function mapBackendRoleToUserRole(roleName: string): UserRole {
+  switch (roleName) {
+    case 'Admin IT':
+      return 'admin_it';
+    case 'Kasi SDM':
+      return 'kasi_sdm';
+    case 'Operator SDM':
+      return 'operator_sdm';
+    default:
+      return 'viewer';
+  }
+}
 
 export interface AuditLogEntry {
   id: string;

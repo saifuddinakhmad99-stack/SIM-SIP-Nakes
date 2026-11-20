@@ -11,8 +11,10 @@ import {
   AppSettings,
   AuditActionType,
   AuditLogEntry,
+  BackendSessionUser,
   getWibDateKey,
   hitungSisaHari,
+  mapBackendRoleToUserRole,
   NakesRecord,
   NavSection,
   renderTemplateWa,
@@ -21,6 +23,8 @@ import {
   UserAccount,
   WaLogEntry,
 } from './types/sip';
+import { useAuth } from './lib/authContext';
+import { LoginView } from './components/LoginView';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
 import { DataSipView } from './components/DataSipView';
@@ -70,6 +74,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 export default function App() {
+  const { authenticatedUser, loading: authLoading, logout } = useAuth();
   const [activeSection, setActiveSection] = useState<NavSection>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -155,6 +160,60 @@ export default function App() {
       // ignore
     }
   }, [currentUser.id]);
+
+  // Synchronize authenticated backend session user into active RBAC role state
+  useEffect(() => {
+    if (!authenticatedUser) return;
+    const mappedRole = mapBackendRoleToUserRole(authenticatedUser.role);
+    const normalizedUsername = authenticatedUser.username.toLowerCase();
+    const existing = users.find(
+      (u) => u.username.toLowerCase() === normalizedUsername
+    );
+    const targetId = existing ? existing.id : `usr-auth-${authenticatedUser.id}`;
+
+    if (currentUserId !== targetId) {
+      setCurrentUserId(targetId);
+    }
+
+    if (
+      !existing ||
+      existing.role !== mappedRole ||
+      existing.nama !== authenticatedUser.name ||
+      !existing.aktif
+    ) {
+      setUsers((prev) => {
+        const found = prev.find(
+          (u) => u.username.toLowerCase() === normalizedUsername
+        );
+        if (found) {
+          return prev.map((u) =>
+            u.id === found.id
+              ? {
+                  ...u,
+                  nama: authenticatedUser.name,
+                  nip: authenticatedUser.nip || u.nip,
+                  role: mappedRole,
+                  aktif: true,
+                }
+              : u
+          );
+        }
+        return [
+          ...prev,
+          {
+            id: targetId,
+            nama: authenticatedUser.name,
+            nip: authenticatedUser.nip || '-',
+            username: normalizedUsername,
+            jabatan: ROLE_PERMISSION_MATRIX[mappedRole].label,
+            role: mappedRole,
+            aktif: true,
+            createdAt: getWibDateKey(),
+          },
+        ];
+      });
+    }
+  }, [authenticatedUser]);
 
   // Redirect away from disallowed section after role change
   useEffect(() => {
@@ -586,6 +645,75 @@ export default function App() {
     );
   };
 
+  const handleLoginSuccess = (
+    backendUser: BackendSessionUser,
+    method: 'password' | 'google'
+  ) => {
+    const mappedRole = mapBackendRoleToUserRole(backendUser.role);
+    const roleLabel = ROLE_PERMISSION_MATRIX[mappedRole].label;
+    setActiveSection('dashboard');
+    recordAudit(
+      'LOGIN',
+      backendUser.name,
+      `Masuk ke sistem melalui ${method === 'google' ? 'Google SSO' : 'Username & Kata Sandi'} sebagai @${backendUser.username} (${roleLabel}).`,
+      backendUser.name,
+      roleLabel
+    );
+    showToast(`Selamat datang, ${backendUser.name} (${roleLabel}).`);
+  };
+
+  const handleLogout = async () => {
+    recordAudit(
+      'LOGOUT',
+      currentUser.nama,
+      `Keluar dari sesi @${currentUser.username} (${ROLE_PERMISSION_MATRIX[currentUser.role].label}).`
+    );
+    setIsFormModalOpen(false);
+    setDetailNakes(null);
+    setWaTargetNakes(null);
+    setIsSwitchUserModalOpen(false);
+    setMobileMenuOpen(false);
+    setToastMessage(null);
+    await logout();
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="w-5 h-5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 2L4 5.5V11.5C4 16.8 7.4 21.6 12 23C16.6 21.6 20 16.8 20 11.5V5.5L12 2Z" />
+              <path d="M12 8.5V15.5" />
+              <path d="M8.5 12H15.5" />
+            </svg>
+          </div>
+          <p className="text-sm font-medium text-slate-600">
+            Memeriksa sesi autentikasi...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authenticatedUser) {
+    return (
+      <LoginView
+        namaInstansi={settings.namaInstansi}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex">
       {/* Left Sidebar Navigation */}
@@ -597,6 +725,7 @@ export default function App() {
         currentUser={currentUser}
         permissions={permissions}
         onOpenSwitchUser={() => setIsSwitchUserModalOpen(true)}
+        onLogout={handleLogout}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
